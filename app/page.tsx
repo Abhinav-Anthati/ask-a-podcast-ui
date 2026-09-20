@@ -15,6 +15,7 @@ type Citation = {
 type Podcast = {
   url: string;
   title: string;
+  episode_count: number;
 };
 
 async function streamNDJSON(response: Response, onLine: (data: any) => void) {
@@ -216,8 +217,9 @@ function Home() {
 
       <div className="mt-4 space-y-1">
         {podcasts.map((p, i) => (
-          <p key={i} className="border rounded px-3 py-2 text-sm">
-            {p.title}
+          <p key={i} className="border rounded px-3 py-2 text-sm flex justify-between">
+            <span>{p.title}</span>
+            <span className="text-gray-500">{p.episode_count} episodes</span>
           </p>
         ))}
       </div>
