@@ -139,6 +139,15 @@ function Home() {
     });
   }
 
+  async function handleUnsubscribe(url: string) {
+    await fetch(`${API_BASE}/podcasts`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feed_url: url }),
+    });
+    loadPodcasts();
+  }
+
   return (
     <main className="max-w-2xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Ask a Podcast</h1>
@@ -217,10 +226,18 @@ function Home() {
 
       <div className="mt-4 space-y-1">
         {podcasts.map((p, i) => (
-          <p key={i} className="border rounded px-3 py-2 text-sm flex justify-between">
+          <div key={i} className="border rounded px-3 py-2 text-sm flex justify-between items-center">
             <span>{p.title}</span>
-            <span className="text-gray-500">{p.episode_count} episodes</span>
-          </p>
+            <div className="flex items-center gap-3">
+              <span className="text-gray-500">{p.episode_count} episodes</span>
+              <button
+                onClick={() => handleUnsubscribe(p.url)}
+                className="text-red-600 hover:underline"
+              >
+                Unsubscribe
+              </button>
+            </div>
+          </div>
         ))}
       </div>
     </main>
