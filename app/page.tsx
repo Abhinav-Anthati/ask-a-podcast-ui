@@ -266,7 +266,7 @@ function Home() {
 
       <div className="mt-4 space-y-1">
         {podcasts.length === 0 && (
-          <p className="text-gray-500 text-sm">No podcasts yet — paste a feed URL above.</p>
+          <p className="text-gray-500 text-sm">No podcasts yet - paste a feed URL above.</p>
         )}
         {podcasts.map((p, i) => (
           <div key={i} className="border rounded px-3 py-2 text-sm flex justify-between items-center">
