@@ -18,6 +18,7 @@ type Podcast = {
   episode_count: number;
 };
 
+// NDJSON stream reader: buffers partial lines across chunks, parses complete ones
 async function streamNDJSON(response: Response, onLine: (data: any) => void) {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -43,15 +44,21 @@ function Home() {
   const [answer, setAnswer] = useState("");
   const [citations, setCitations] = useState<Citation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [askError, setAskError] = useState("");
+
   const [feedUrl, setFeedUrl] = useState("");
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const [subscribing, setSubscribing] = useState(false);
   const [progress, setProgress] = useState("");
+  const [podcastError, setPodcastError] = useState("");
+  const [unsubscribingUrl, setUnsubscribingUrl] = useState("");
+
   const [filterUrl, setFilterUrl] = useState("");
   const [hasAudio, setHasAudio] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Same episode: just seek. Different episode: load first, seek once metadata's ready
   function playAt(url: string, time: number) {
     const audio = audioRef.current;
     if (!audio) return;
@@ -83,13 +90,22 @@ function Home() {
   async function handleAsk() {
     setAnswer("");
     setCitations([]);
+    setAskError("");
     setLoading(true);
 
     const response = await fetch(`${API_BASE}/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // "" means no filter selected; backend expects null for "search all"
       body: JSON.stringify({ question, podcast_url: filterUrl || null }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Something went wrong." }));
+      setAskError(errorData.detail || "Failed to get an answer.");
+      setLoading(false);
+      return;
+    }
 
     await streamNDJSON(response, (data) => {
       if (data.type === "citations") {
@@ -105,6 +121,7 @@ function Home() {
   async function handleSubscribe() {
     setSubscribing(true);
     setProgress("");
+    setPodcastError("");
 
     const response = await fetch(`${API_BASE}/podcasts`, {
       method: "POST",
@@ -112,6 +129,13 @@ function Home() {
       body: JSON.stringify({ feed_url: feedUrl }),
     });
     setFeedUrl("");
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Something went wrong." }));
+      setPodcastError(errorData.detail || "Failed to subscribe.");
+      setSubscribing(false);
+      return;
+    }
 
     await streamNDJSON(response, (data) => {
       switch (data.status) {
@@ -140,12 +164,24 @@ function Home() {
   }
 
   async function handleUnsubscribe(url: string) {
-    await fetch(`${API_BASE}/podcasts`, {
+    setPodcastError("");
+    setUnsubscribingUrl(url);
+
+    const response = await fetch(`${API_BASE}/podcasts`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ feed_url: url }),
     });
-    loadPodcasts();
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: "Something went wrong." }));
+      setPodcastError(errorData.detail || "Failed to unsubscribe.");
+      setUnsubscribingUrl("");
+      return;
+    }
+
+    await loadPodcasts();
+    setUnsubscribingUrl("");
   }
 
   return (
@@ -163,7 +199,7 @@ function Home() {
         <select
           value={filterUrl}
           onChange={(e) => setFilterUrl(e.target.value)}
-          className="border rounded px-2 py-2"
+          className="w-40 border rounded px-2 py-2"
         >
           <option value="">All podcasts</option>
           {podcasts.map((p, i) => (
@@ -178,6 +214,8 @@ function Home() {
           {loading ? "Asking..." : "Ask"}
         </button>
       </div>
+
+      {askError && <p className="text-red-600 text-sm mt-2">{askError}</p>}
 
       {answer && <p className="mt-4 whitespace-pre-wrap">{answer}</p>}
 
@@ -199,6 +237,7 @@ function Home() {
         </div>
       )}
 
+      {/* Always mounted (only visibility toggles) so audioRef never goes stale */}
       <audio ref={audioRef} controls className={`w-full mt-4 ${hasAudio ? "block" : "hidden"}`} />
 
       <hr className="my-8" />
@@ -222,9 +261,13 @@ function Home() {
         </button>
       </div>
 
+      {podcastError && <p className="text-red-600 text-sm mt-2">{podcastError}</p>}
       {progress && <p className="text-sm text-gray-600 mt-2">{progress}</p>}
 
       <div className="mt-4 space-y-1">
+        {podcasts.length === 0 && (
+          <p className="text-gray-500 text-sm">No podcasts yet — paste a feed URL above.</p>
+        )}
         {podcasts.map((p, i) => (
           <div key={i} className="border rounded px-3 py-2 text-sm flex justify-between items-center">
             <span>{p.title}</span>
@@ -232,9 +275,10 @@ function Home() {
               <span className="text-gray-500">{p.episode_count} episodes</span>
               <button
                 onClick={() => handleUnsubscribe(p.url)}
-                className="text-red-600 hover:underline"
+                disabled={unsubscribingUrl === p.url}
+                className="text-red-600 hover:underline disabled:opacity-50"
               >
-                Unsubscribe
+                {unsubscribingUrl === p.url ? "Unsubscribing..." : "Unsubscribe"}
               </button>
             </div>
           </div>
