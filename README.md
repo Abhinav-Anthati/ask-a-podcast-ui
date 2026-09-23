@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ask-a-Podcast UI
 
-## Getting Started
+The Next.js frontend for Ask-a-Podcast. Handles subscribing to feeds, asking questions, and playing cited audio at the exact timestamp a citation refers to.
 
-First, run the development server:
+**Live:** [ask-a-podcast-ui.vercel.app](https://ask-a-podcast-ui.vercel.app)
+
+Backend repo: [ask-a-podcast](https://github.com/Abhinav-Anthati/ask-a-podcast)
+
+## What it does
+
+- A single question box, with a dropdown to scope search to one subscribed podcast or all of them.
+- Answers stream in token by token, NDJSON parsed client-side as it arrives, not waiting for the full response.
+- Citations render as clickable cards. Clicking one seeks an in-page audio player to that exact second in the actual episode, loading the file if it's a different episode than what's currently playing.
+- A subscriptions panel to add, view, and remove podcasts, with live progress while a new one syncs.
+
+## Stack
+
+Next.js (App Router), TypeScript, Tailwind. No component library, everything here is plain HTML elements and Tailwind classes.
+
+## Running it locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Runs on `http://localhost:3000`. Expects the backend at `http://localhost:8000` by default (see `API_BASE` in `app/page.tsx`), overridable via the `NEXT_PUBLIC_API_BASE` environment variable, which is how the deployed version points at the production backend instead.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Notes on the implementation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The whole app is one component, `app/page.tsx`, heavily commented inline rather than split into many small files, since it's small enough that one file stays readable and the comments explain the reasoning behind each piece (controlled inputs, the NDJSON stream parser, why the audio element stays permanently mounted, why `useState` updates in `handleAsk` use the updater-function form) directly where it's relevant.
 
-## Learn More
+Two things worth knowing if you're extending this:
 
-To learn more about Next.js, take a look at the following resources:
+**The audio player is always rendered, its visibility just toggles.** It has to stay mounted the whole time, or the `ref` pointing at it would go stale every time it's conditionally added or removed from the page.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Errors are split by section, not shared globally.** Asking a question and managing subscriptions each have their own error state, so a failure in one doesn't show a confusing, unrelated error message next to the other.
