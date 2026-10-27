@@ -2,8 +2,6 @@
 
 The Next.js frontend for Ask-a-Podcast. Handles subscribing to feeds, asking questions, and playing cited audio at the exact timestamp a citation refers to.
 
-**Live:** [ask-a-podcast-ui.vercel.app](https://ask-a-podcast-ui.vercel.app)
-
 Backend repo: [ask-a-podcast](https://github.com/Abhinav-Anthati/ask-a-podcast)
 
 ## What it does
